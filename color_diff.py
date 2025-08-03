@@ -3,43 +3,65 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
-def show_img(x):
+
+
+# Utility function to display image
+def show_img(image):
     cv.namedWindow('image', cv.WINDOW_NORMAL)
-    cv.imshow('image', x)
+    cv.imshow('image', image)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
-giris_klasoru = r"giris_klasor_path"
-cikis_klasoru = r"cikis_klasor_path"
-os.makedirs(cikis_klasoru, exist_ok=True)
 
-for i, dosya_adi in enumerate(os.listdir(giris_klasoru), start=1):
-    dosya_yolu = os.path.join(giris_klasoru, dosya_adi)
-    if dosya_adi.lower().endswith(('.jpg', '.jpeg', '.png')):
-        yol = os.path.join(giris_klasoru, dosya_adi)
-        img = cv.imread(yol, cv.IMREAD_GRAYSCALE)
+# Input and output folder paths
+input_folder = r"input_folder_path"
+output_folder = r"output_folder_path"
+os.makedirs(output_folder, exist_ok=True)
+
+# Process each image in the input folder
+for i, file_name in enumerate(os.listdir(input_folder), start=1):
+    file_path = os.path.join(input_folder, file_name)
+
+    if file_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+        full_path = os.path.join(input_folder, file_name)
+        img = cv.imread(full_path, cv.IMREAD_GRAYSCALE)
+
         if img is not None:
-            ret, imgg = cv.threshold(img, 150, 255, cv.THRESH_BINARY)
-            normalized = imgg / 255
-            satir_toplamlari = np.sum(normalized, axis=1)
+            # Apply binary threshold to enhance contrast
+            _, binary_img = cv.threshold(img, 150, 255, cv.THRESH_BINARY)
+
+            # Normalize image to range [0, 1]
+            normalized = binary_img / 255
+
+            # Calculate row-wise pixel intensity (summed over columns)
+            row_sums = np.sum(normalized, axis=1)
+
+            # Optionally scale values for consistency
             scaler = StandardScaler()
-            scaled = scaler.fit_transform(satir_toplamlari.reshape(-1, 1)).flatten()
+            scaled = scaler.fit_transform(row_sums.reshape(-1, 1)).flatten()
+
+            # Plot and visualize pixel intensity by row
             plt.figure(figsize=(10, 6))
-            plt.bar(range(len(satir_toplamlari)), satir_toplamlari)
-            plt.xlabel("Satır (Y Ekseni)")
-            plt.ylabel("Toplam Piksel Değeri")
-            plt.title("Satır Bazlı Piksel Yoğunluğu")
+            plt.bar(range(len(row_sums)), row_sums)
+            plt.xlabel("Row (Y-axis)")
+            plt.ylabel("Total Pixel Value")
+            plt.title("Row-wise Pixel Intensity")
             plt.tight_layout()
             plt.show()
+
+            # Display the normalized binary image
             show_img(normalized)
-            kayit_yolu = os.path.join(cikis_klasoru, f"satir_toplamlari_{i}.jpeg")
-            plt.savefig(kayit_yolu)
+
+            # Save the plot to output folder
+            plot_path = os.path.join(output_folder, f"row_sums_{i}.jpeg")
+            plt.savefig(plot_path)
             plt.close()
-            veri_yolu = os.path.join(cikis_klasoru, f"satir_toplamlari_{i}.txt")
-            np.savetxt(veri_yolu, satir_toplamlari)
+
+            # Save raw row sums as text data
+            data_path = os.path.join(output_folder, f"row_sums_{i}.txt")
+            np.savetxt(data_path, row_sums)
 
         else:
-            print("Yeterli çizgi bulunamadı.")
+            print("Could not process the image.")
     else:
-            print(f"Görüntü yüklenemedi: {dosya_yolu}")
-
+        print(f"Unsupported file format: {file_path}")
